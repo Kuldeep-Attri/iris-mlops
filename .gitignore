@@ -1,6 +1,5 @@
-# Add Iris Dataset
-!dataV1.csv
-!dataV2.csv
+# Remove Processed Iris Dataset
+**/processed_data.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
