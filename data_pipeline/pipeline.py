@@ -8,7 +8,8 @@ logger = get_logger("data_pipeline")
 
 
 def run(
-    file_name: str = settings.DATA_FILE, data_dir: str = settings.DATA_DIR
+    file_name: str = settings.RAW_DATA_FILE,
+    data_dir: str = settings.RAW_DATA_DIR,
 ):
     """_summary_
 

@@ -2,10 +2,6 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-import utils
-from yarl import URL
-
-logger = utils.get_logger("extract")
 
 
 def extract_data(file_name: str, data_dir: str) -> Optional[pd.DataFrame]:

@@ -1,8 +1,24 @@
 from typing import List
 
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+
+
+def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Remove duplicate rows from the input DataFrame and return a new DataFrame without duplicates.
+
+    This function creates a new DataFrame by removing duplicate rows from the input DataFrame.
+    The original input DataFrame remains unchanged.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame containing potentially duplicate rows.
+
+    Returns:
+        pd.DataFrame: A new DataFrame with duplicate rows removed.
+    """
+
+    data = df.copy()
+    return data.drop_duplicates()
 
 
 def remove_columns(df: pd.DataFrame, columns: List = ["id"]) -> pd.DataFrame:
@@ -79,4 +95,19 @@ def encode_label(
     return data
 
 
-# def data_normalization()
+def transform_data(df: pd.DataFrame) -> pd.DataFrame:
+    df = remove_columns(df=df, columns=["id"])
+    df = rename_columns(
+        df=df,
+        column_names=[
+            "sepal_lenght",
+            "sepal_width",
+            "petal_lenght",
+            "petal_width",
+            "target",
+        ],
+    )
+    df = drop_duplicates(df=df)
+    df = encode_label(df=df)
+
+    return df
