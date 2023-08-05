@@ -3,7 +3,6 @@ import logging
 from pathlib import Path
 
 import settings
-from google.cloud import storage
 
 
 def get_logger(name: str) -> logging.Logger:
@@ -58,26 +57,3 @@ def load_json(file_name: str, save_dir: str = settings.OUTPUT_DIR) -> dict:
 
     with open(data_path, "r") as f:
         return json.load(f)
-
-
-def upload_df_to_cloud_storage(df, bucket_name, destination_blob_name):
-    """
-    Upload a Pandas DataFrame as a CSV file to a Google Cloud Storage bucket.
-
-    This function takes a Pandas DataFrame and uploads its data as a CSV file to a specified
-    Google Cloud Storage bucket and destination blob name.
-
-    Args:
-        df (pd.DataFrame): The Pandas DataFrame to be uploaded.
-        bucket_name (str): The name of the Google Cloud Storage bucket.
-        destination_blob_name (str): The destination blob name (path and filename) in the bucket.
-
-    Returns:
-        None
-    """
-
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-    csv_data = df.to_csv(index=False)
-    blob = bucket.blob(destination_blob_name)
-    blob.upload_from_string(csv_data)

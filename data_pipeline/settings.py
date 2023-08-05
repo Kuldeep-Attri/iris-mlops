@@ -34,11 +34,10 @@ def get_root_dir(default_value: str = ".") -> Path:
     return Path(os.getenv("ML_PIPELINE_ROOT_DIR", default_value))
 
 
-RAW_DATA_FILE = "raw_data.csv"
-RAW_DATA_DIR = "/Users/kuldeepsharma/github/mlops/iris-mlops/data/raw"
-PROCESSED_DATA_FILE = "processed_data.csv"
-PROCESSED_DATA_DIR = (
-    "/Users/kuldeepsharma/github/mlops/iris-mlops/data/processed"
+DATA_FILE = "raw_data.csv"
+DATA_DIR = "/Users/kuldeepsharma/github/mlops/iris-mlops/data"
+PROCESSED_DATA_FILE = (
+    "/Users/kuldeepsharma/github/mlops/iris-mlops/data/processed_data.csv"
 )
 
 ML_PIPELINE_ROOT_DIR = get_root_dir()

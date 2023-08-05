@@ -1,33 +1,24 @@
 import pandas as pd
-from utils import upload_df_to_cloud_storage
+import settings
 
 
 def load_data(
-    df: pd.DataFrame,
-    bucket_name: str = "kuldeep-iris-dataset",
-    destination_blob_name: str = "iris-dataset/processed_data.csv",
-) -> None:
+    df: pd.DataFrame, processed_data_file: str = settings.PROCESSED_DATA_FILE
+) -> pd.DataFrame:
     """
-    Upload a Pandas DataFrame as a CSV file to a specified Google Cloud Storage bucket and blob.
+    Save a Pandas DataFrame as a CSV file.
 
-    This function takes a Pandas DataFrame and uploads it as a CSV file to the specified
-    Google Cloud Storage bucket and destination blob name.
+    This function takes a Pandas DataFrame and saves it as a CSV file with the provided filename.
+    By default, the file is saved with the specified filename from the module settings.
 
     Args:
-        df (pd.DataFrame): The Pandas DataFrame to be uploaded.
-        bucket_name (str, optional): The name of the Google Cloud Storage bucket.
-            Defaults to "kuldeep-iris-dataset".
-        destination_blob_name (str, optional): The destination blob name (path and filename) in the bucket.
-            Defaults to "iris-dataset/processed_data.csv".
+        df (pd.DataFrame): The Pandas DataFrame to be saved.
+        processed_data_file (str, optional): The path and filename to save the CSV file.
+            Defaults to the value specified in the module settings.
 
     Returns:
-        None
+        Input Pandas DataFrame
     """
 
-    upload_df_to_cloud_storage(
-        df=df,
-        bucket_name=bucket_name,
-        destination_blob_name=destination_blob_name,
-    )
-
-    return
+    df.to_csv(processed_data_file, index=False)
+    return df

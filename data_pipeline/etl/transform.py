@@ -21,7 +21,7 @@ def drop_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     return data.drop_duplicates()
 
 
-def remove_columns(df: pd.DataFrame, columns: List = ["id"]) -> pd.DataFrame:
+def remove_columns(df: pd.DataFrame, columns: List = ["Id"]) -> pd.DataFrame:
     """
     Remove specified columns from the input DataFrame and return a new DataFrame with remaining columns.
 
@@ -96,7 +96,7 @@ def encode_label(
 
 
 def transform_data(df: pd.DataFrame) -> pd.DataFrame:
-    df = remove_columns(df=df, columns=["id"])
+    df = remove_columns(df=df, columns=["Id"])
     df = rename_columns(
         df=df,
         column_names=[
