@@ -143,7 +143,6 @@ energy_consumption/
 
 # Data
 *.parquet
-models/
 output/
 artifacts/
 
