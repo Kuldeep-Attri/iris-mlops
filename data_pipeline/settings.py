@@ -35,7 +35,7 @@ def get_root_dir(default_value: str = ".") -> Path:
 
 
 DATA_FILE = "dataV1.csv"
-DATA_DIR = "/Users/kuldeepsharma/github/mlops/iris-mlops/data"
+DATA_DIR = "/Users/kuldeepsharma/github/mlops/iris-mlops/data/raw"
 
 ML_PIPELINE_ROOT_DIR = get_root_dir()
 OUTPUT_DIR = ML_PIPELINE_ROOT_DIR / "output"
