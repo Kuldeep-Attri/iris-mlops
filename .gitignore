@@ -1,5 +1,7 @@
 # Remove Processed Iris Dataset
 **/processed_data.csv
+**/new_batch_data.csv
+*mlflow.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
