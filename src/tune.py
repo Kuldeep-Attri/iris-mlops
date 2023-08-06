@@ -121,6 +121,7 @@ def tune():
         config.TUNING_CONFIG["layer2_dims"],
         config.TUNING_CONFIG["activation_functions"],
     )
+
     logger.info(
         f'Preparing data at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
     )
@@ -173,7 +174,7 @@ def tune():
             f'Tracking training with MLFlow for iter {i} at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
         )
         with mlflow.start_run(
-            run_name=f"run-tuning",
+            run_name=f"run-tuning-{i+1}",
             description=f"Models generated during hyper-parameter tunings.",
         ) as run:
             params = {
@@ -184,7 +185,7 @@ def tune():
             }
             mlflow.log_params(params=params)
 
-            mlflow.pytorch.log_model(model, f"iris-pytorch-model")
+            mlflow.pytorch.log_model(model, f"iris-tuned-model")
 
             for i in range(len(list(train_losses))):
                 mlflow.log_metrics(

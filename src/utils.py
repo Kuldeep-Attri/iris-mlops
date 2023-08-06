@@ -16,7 +16,7 @@ def mlflow_config():
     Returns:
         mlflow.tracking.MlflowClient: The configured mlflow object for tracking experiments and models.
     """
-    MODEL_REGISTRY = config.MODEL_REGISTRY
+    MODEL_REGISTRY = Path("/tmp/mlflow")
     Path(MODEL_REGISTRY).mkdir(parents=True, exist_ok=True)
     MLFLOW_TRACKING_URI = "file://" + str(MODEL_REGISTRY.absolute())
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)

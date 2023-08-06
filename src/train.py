@@ -170,7 +170,7 @@ def train():
         }
         mlflow.log_params(params=params)
 
-        mlflow.pytorch.log_model(model, f"iris-pytorch-model")
+        mlflow.pytorch.log_model(model, f"iris-trained-model")
 
         for i in range(len(list(train_losses))):
             mlflow.log_metrics({"train_loss": list(train_losses)[i]}, step=i)

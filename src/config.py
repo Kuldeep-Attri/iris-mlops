@@ -34,11 +34,6 @@ PROCESSED_DATA_FILE = "processed_data.csv"
 OUTPUT_DIR = ROOT_DIR / "output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# Config MLflow
-MODEL_REGISTRY = Path("/tmp/mlflow")
-Path(MODEL_REGISTRY).mkdir(parents=True, exist_ok=True)
-MLFLOW_TRACKING_URI = "file://" + str(MODEL_REGISTRY.absolute())
-mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
 # Create logger
 logging_config = {
