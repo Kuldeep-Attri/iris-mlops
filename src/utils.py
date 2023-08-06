@@ -1,27 +1,30 @@
 import json
-import logging
 from pathlib import Path
 
-import settings
+import mlflow
+
+import config
 
 
-def get_logger(name: str) -> logging.Logger:
+def mlflow_config():
     """
-    Template for getting a logger.
+    Configure MLflow tracking.
 
-    Args:
-        name: Name of the logger.
+    This function sets up the configuration for MLflow tracking by creating a local directory for model registry,
+    setting the MLFLOW_TRACKING_URI to use the local directory, and returning the configured mlflow object.
 
-    Returns: Logger.
+    Returns:
+        mlflow.tracking.MlflowClient: The configured mlflow object for tracking experiments and models.
     """
+    MODEL_REGISTRY = config.MODEL_REGISTRY
+    Path(MODEL_REGISTRY).mkdir(parents=True, exist_ok=True)
+    MLFLOW_TRACKING_URI = "file://" + str(MODEL_REGISTRY.absolute())
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(name)
-
-    return logger
+    return mlflow
 
 
-def save_json(data: dict, file_name: str, save_dir: str = settings.OUTPUT_DIR):
+def save_json(data: dict, file_name: str, save_dir: str = config.OUTPUT_DIR):
     """
     Save a dictionary as a JSON file.
 
@@ -38,7 +41,7 @@ def save_json(data: dict, file_name: str, save_dir: str = settings.OUTPUT_DIR):
         json.dump(data, f)
 
 
-def load_json(file_name: str, save_dir: str = settings.OUTPUT_DIR) -> dict:
+def load_json(file_name: str, save_dir: str = config.OUTPUT_DIR) -> dict:
     """
     Load a JSON file.
 
