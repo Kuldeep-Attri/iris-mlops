@@ -1,4 +1,5 @@
 from datetime import datetime as dt
+from itertools import product
 from typing import Tuple
 
 import numpy as np
@@ -102,17 +103,24 @@ def test_model(
     return accuracy
 
 
-def train():
+def tune():
     """
-    Train neural network model function.
+    Hyperparameter tuning function.
 
-    This function prepares data, trains a neural network model, validates its performance,
-    tests it, and tracks the training process using MLFlow.
+    This function performs hyperparameter tuning for a neural network model using the combinations of parameters
+    specified in the TUNING_CONFIG. It trains, validates, tests, and tracks the model's performance using MLFlow.
 
     Returns:
         None
     """
 
+    combinations = product(
+        config.TUNING_CONFIG["num_epochs"],
+        config.TUNING_CONFIG["learning_rates"],
+        config.TUNING_CONFIG["layer1_dims"],
+        config.TUNING_CONFIG["layer2_dims"],
+        config.TUNING_CONFIG["activation_functions"],
+    )
     logger.info(
         f'Preparing data at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
     )
@@ -123,64 +131,72 @@ def train():
         f'Prepared data at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
     )
 
-    model = SimpleNeuralNetwork(
-        input_dim=config.INPUT_DIM, output_dim=config.NUM_CLASSES
-    )
-    learning_rate, num_epochs = config.LR, config.NUM_EPOCHS
-
     mlflow = mlflow_config()
-    mlflow.set_experiment("iris-mlops-training")
+    mlflow.set_experiment("iris-mlops-tuning")
 
-    logger.info(
-        f'Training data at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-    )
-    model, train_losses, val_losses = train_n_validate_model(
-        model=model,
-        X_train=X_train,
-        y_train=y_train,
-        X_val=X_val,
-        y_val=y_val,
-        num_epochs=num_epochs,
-        learning_rate=learning_rate,
-    )
-    logger.info(
-        f'Trained data at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-    )
+    for i, combination in enumerate(combinations):
+        num_epochs, learning_rate, l1_dim, l2_dim, act = combination
 
-    logger.info(
-        f'Testing data at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-    )
-    accuracy = test_model(model=model, X_test=X_test, y_test=y_test)
-    logger.info(
-        f'Tested data at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-    )
+        model = SimpleNeuralNetwork(
+            input_dim=config.INPUT_DIM,
+            output_dim=config.NUM_CLASSES,
+            layer1_dim=l1_dim,
+            layer2_dim=l2_dim,
+            act=act,
+        )
 
-    logger.info(
-        f'Tracking training with MLFlow at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-    )
-    with mlflow.start_run(
-        run_name=f"run-training",
-        description=f"Models generated during trainings",
-    ) as run:
-        params = {
-            "input_dim": config.INPUT_DIM,
-            "output_dim": config.NUM_CLASSES,
-            "num_epochs": config.NUM_EPOCHS,
-            "learning_rate": config.LR,
-        }
-        mlflow.log_params(params=params)
+        logger.info(
+            f'Training data for iter {i} at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+        )
+        model, train_losses, val_losses = train_n_validate_model(
+            model=model,
+            X_train=X_train,
+            y_train=y_train,
+            X_val=X_val,
+            y_val=y_val,
+            num_epochs=num_epochs,
+            learning_rate=learning_rate,
+        )
+        logger.info(
+            f'Trained data for iter {i} at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+        )
 
-        mlflow.pytorch.log_model(model, f"iris-pytorch-model")
+        logger.info(
+            f'Testing data for iter {i} at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+        )
+        accuracy = test_model(model=model, X_test=X_test, y_test=y_test)
+        logger.info(
+            f'Tested data for iter {i} at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+        )
 
-        for i in range(len(list(train_losses))):
-            mlflow.log_metrics({"train_loss": list(train_losses)[i]}, step=i)
-            mlflow.log_metrics({"val_loss": list(val_losses)[i]}, step=i)
-        mlflow.log_metric("test_accuracy", accuracy)
+        logger.info(
+            f'Tracking training with MLFlow for iter {i} at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+        )
+        with mlflow.start_run(
+            run_name=f"run-tuning",
+            description=f"Models generated during hyper-parameter tunings.",
+        ) as run:
+            params = {
+                "input_dim": config.INPUT_DIM,
+                "output_dim": config.NUM_CLASSES,
+                "num_epochs": config.NUM_EPOCHS,
+                "learning_rate": config.LR,
+            }
+            mlflow.log_params(params=params)
 
-    logger.info(
-        f'Tracked training with MLFlow at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-    )
+            mlflow.pytorch.log_model(model, f"iris-pytorch-model")
+
+            for i in range(len(list(train_losses))):
+                mlflow.log_metrics(
+                    {"train_loss": list(train_losses)[i]}, step=i
+                )
+                mlflow.log_metrics({"val_loss": list(val_losses)[i]}, step=i)
+            mlflow.log_metric("test_accuracy", accuracy)
+
+        logger.info(
+            f'Tracked training with for iter {i} MLFlow at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+        )
 
 
 if __name__ == "__main__":
-    train()
+    tune()

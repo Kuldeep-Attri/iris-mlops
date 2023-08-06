@@ -11,7 +11,16 @@ SEED = 3
 INPUT_DIM = 4
 NUM_CLASSES = 3
 LR = 0.01
-NUM_EPOCHS = 10
+NUM_EPOCHS = 100
+
+# Tuning Parameters
+TUNING_CONFIG = {
+    "num_epochs": [10, 50, 100],
+    "learning_rates": [0.05, 0.01, 0.001],
+    "layer1_dims": [64, 128, 256],
+    "layer2_dims": [32, 64, 128],
+    "activation_functions": ["relu", "tanh"],
+}
 
 # Config Directories
 ROOT_DIR = Path(__file__).parent.parent.absolute()
