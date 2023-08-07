@@ -1,6 +1,8 @@
 from datetime import datetime as dt
+from pathlib import Path
 from typing import Tuple
 
+import dvc.api
 import numpy as np
 import torch
 import torch.nn as nn
@@ -163,6 +165,7 @@ def train():
         description=f"Models generated during trainings",
     ) as run:
         params = {
+            "data_url": dvc.api.get_url(path=("./../data/raw_data.csv")),
             "input_dim": config.INPUT_DIM,
             "output_dim": config.NUM_CLASSES,
             "num_epochs": config.NUM_EPOCHS,
