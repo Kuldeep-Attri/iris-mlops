@@ -7,12 +7,19 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import typer
 
 import config
 from config import logger
 from models import SimpleNeuralNetwork
 from prepare_data import stratify_split
 from utils import mlflow_config
+
+# Constant
+TRAIN_EXPERIMENT_NAME = "iris-mlops-training"
+
+# Initialize Typer CLI app
+app = typer.Typer()
 
 
 def train_n_validate_model(
@@ -104,6 +111,42 @@ def test_model(
     return accuracy
 
 
+def log_training_with_mlflow(
+    mlflow,
+    model: nn.Module,
+    train_losses: np.array,
+    val_losses: np.array,
+    accuracy: float,
+):
+    """
+    Log training details using MLFlow.
+    """
+
+    with mlflow.start_run(run_name="run-training") as run:
+        mlflow.log_params(
+            params={
+                "data_url": dvc.api.get_url(
+                    path=str(config.DATA_DIR / config.DATA_FILE)
+                ),
+                "input_dim": config.INPUT_DIM,
+                "output_dim": config.NUM_CLASSES,
+                "num_epochs": config.NUM_EPOCHS,
+                "learning_rate": config.LR,
+            }
+        )
+
+        mlflow.pytorch.log_model(model, "iris-trained-model")
+
+        for i, (train_loss, val_loss) in enumerate(
+            zip(train_losses, val_losses)
+        ):
+            mlflow.log_metrics(
+                {"train_loss": train_loss, "val_loss": val_loss}, step=i
+            )
+        mlflow.log_metric("accuracy", accuracy)
+
+
+@app.command()
 def train():
     """
     Train neural network model function.
@@ -131,7 +174,7 @@ def train():
     learning_rate, num_epochs = config.LR, config.NUM_EPOCHS
 
     mlflow = mlflow_config()
-    mlflow.set_experiment("iris-mlops-training")
+    mlflow.set_experiment(TRAIN_EXPERIMENT_NAME)
 
     logger.info(
         f'Training data at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
@@ -160,32 +203,17 @@ def train():
     logger.info(
         f'Tracking training with MLFlow at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
     )
-    with mlflow.start_run(
-        run_name=f"run-training",
-        description=f"Models generated during trainings",
-    ) as run:
-        params = {
-            "data_url": dvc.api.get_url(
-                path=str(config.DATA_DIR / config.DATA_FILE)
-            ),
-            "input_dim": config.INPUT_DIM,
-            "output_dim": config.NUM_CLASSES,
-            "num_epochs": config.NUM_EPOCHS,
-            "learning_rate": config.LR,
-        }
-        mlflow.log_params(params=params)
-
-        mlflow.pytorch.log_model(model, f"iris-trained-model")
-
-        for i in range(len(list(train_losses))):
-            mlflow.log_metrics({"train_loss": list(train_losses)[i]}, step=i)
-            mlflow.log_metrics({"val_loss": list(val_losses)[i]}, step=i)
-        mlflow.log_metric("test_accuracy", accuracy)
-
+    log_training_with_mlflow(
+        mlflow=mlflow,
+        model=model,
+        train_losses=train_losses,
+        val_losses=val_losses,
+        accuracy=accuracy,
+    )
     logger.info(
         f'Tracked training with MLFlow at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
     )
 
 
 if __name__ == "__main__":
-    train()
+    app()
