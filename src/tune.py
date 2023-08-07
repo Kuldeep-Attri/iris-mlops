@@ -1,17 +1,65 @@
 from datetime import datetime as dt
 from itertools import product
-from typing import Tuple
+from typing import Optional, Tuple
 
+import dvc.api
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import typer
+import yaml
 
 import config
 from config import logger
 from models import SimpleNeuralNetwork
 from prepare_data import stratify_split
 from utils import mlflow_config
+
+# Constants
+TUNING_EXPERIMENT_NAME = "iris-mlops-tuning"
+TUNING_MODEL_NAME = "iris-tuned-model"
+PRODUCTION_MODEL_NAME = "iris-production-model"
+
+# Initialize Typer CLI app
+app = typer.Typer()
+
+
+def register_best_model(
+    mlflow,
+    experiment_name: str = TUNING_EXPERIMENT_NAME,
+    model_name: str = PRODUCTION_MODEL_NAME,
+) -> Optional[int]:
+    """
+    Register the best model to the MLflow Model Registry based on specified criteria.
+
+    Parameters:
+        mlflow: MLflow client instance.
+        experiment_name (str, optional): Name of the experiment where runs are logged.
+            Default is "iris-mlops-tuning".
+        model_name (str, optional): Name to be given to the registered model.
+            Default is "iris-production-model".
+
+    Returns:
+        int: Version of the registered model, or None if no suitable model was found.
+    """
+
+    sorted_runs = mlflow.search_runs(
+        experiment_names=[experiment_name], order_by=["metrics.val_loss ASC"]
+    )
+    if not sorted_runs.empty:
+        best_run_id = sorted_runs.iloc[0].run_id
+        model_version = mlflow.register_model(
+            f"models:/{best_run_id}/model", model_name
+        )
+        logger.info(
+            f'Registered model at MLFlow Registry at {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+        )
+
+        return model_version
+
+    logger.error(f"Could not find a model to register.")
+    return None
 
 
 def train_n_validate_model(
@@ -95,14 +143,55 @@ def test_model(
     _, predicted_test = torch.max(output_test, 1)
     correct_predictions_test = (predicted_test == y_test).sum().item()
     total_test_samples = y_test.size(0) * 1.0
-    accuracy = round(correct_predictions_test / total_test_samples, 4) * 100.0
 
-    logger.info(
-        f'Test Accuracy: {accuracy} % at {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-    )
+    accuracy = round(correct_predictions_test / total_test_samples, 4) * 100.0
     return accuracy
 
 
+def log_tuning_with_mlflow(
+    mlflow,
+    i: int,
+    model: nn.Module,
+    train_losses: np.array,
+    val_losses: np.array,
+    accuracy: float,
+    num_epochs: int,
+    learning_rate: float,
+    l1_dim: int,
+    l2_dim: int,
+    act: str,
+):
+    """
+    Log tuning details using MLFlow.
+    """
+
+    with mlflow.start_run(
+        run_name=f"run-tuning-{i+1}",
+        description=f"Models generated during hyper-parameter tunings.",
+    ) as run:
+        params = {
+            "data_url": dvc.api.get_url(
+                path=str(config.DATA_DIR / config.DATA_FILE)
+            ),
+            "input_dim": config.INPUT_DIM,
+            "output_dim": config.NUM_CLASSES,
+            "num_epochs": num_epochs,
+            "learning_rate": learning_rate,
+            "layer1_dimension": l1_dim,
+            "layer2_dimension": l2_dim,
+            "activation": act,
+        }
+        mlflow.log_params(params=params)
+
+        mlflow.pytorch.log_model(model, TUNING_MODEL_NAME)
+
+        for i in range(len(list(train_losses))):
+            mlflow.log_metrics({"train_loss": list(train_losses)[i]}, step=i)
+            mlflow.log_metrics({"val_loss": list(val_losses)[i]}, step=i)
+        mlflow.log_metric("test_accuracy", accuracy)
+
+
+@app.command()
 def tune():
     """
     Hyperparameter tuning function.
@@ -133,7 +222,11 @@ def tune():
     )
 
     mlflow = mlflow_config()
-    mlflow.set_experiment("iris-mlops-tuning")
+    mlflow.set_experiment(TUNING_EXPERIMENT_NAME)
+
+    logger.info(
+        f'Tuning & Tracking models at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+    )
 
     for i, combination in enumerate(combinations):
         num_epochs, learning_rate, l1_dim, l2_dim, act = combination
@@ -146,9 +239,6 @@ def tune():
             act=act,
         )
 
-        logger.info(
-            f'Training data for iter {i} at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-        )
         model, train_losses, val_losses = train_n_validate_model(
             model=model,
             X_train=X_train,
@@ -158,46 +248,53 @@ def tune():
             num_epochs=num_epochs,
             learning_rate=learning_rate,
         )
-        logger.info(
-            f'Trained data for iter {i} at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-        )
 
-        logger.info(
-            f'Testing data for iter {i} at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-        )
         accuracy = test_model(model=model, X_test=X_test, y_test=y_test)
-        logger.info(
-            f'Tested data for iter {i} at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+
+        log_tuning_with_mlflow(
+            mlflow=mlflow,
+            i=i,
+            model=model,
+            train_losses=train_losses,
+            val_losses=val_losses,
+            accuracy=accuracy,
+            num_epochs=num_epochs,
+            learning_rate=learning_rate,
+            l1_dim=l1_dim,
+            l2_dim=l2_dim,
+            act=act,
         )
 
-        logger.info(
-            f'Tracking training with MLFlow for iter {i} at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-        )
-        with mlflow.start_run(
-            run_name=f"run-tuning-{i+1}",
-            description=f"Models generated during hyper-parameter tunings.",
-        ) as run:
-            params = {
-                "input_dim": config.INPUT_DIM,
-                "output_dim": config.NUM_CLASSES,
-                "num_epochs": config.NUM_EPOCHS,
-                "learning_rate": config.LR,
-            }
-            mlflow.log_params(params=params)
+    logger.info(
+        f'Tuned & Tracked model at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+    )
 
-            mlflow.pytorch.log_model(model, f"iris-tuned-model")
+    model_version = register_best_model(
+        mlflow=mlflow,
+        experiment_name=TUNING_EXPERIMENT_NAME,
+        model_name=PRODUCTION_MODEL_NAME,
+    )
 
-            for i in range(len(list(train_losses))):
-                mlflow.log_metrics(
-                    {"train_loss": list(train_losses)[i]}, step=i
-                )
-                mlflow.log_metrics({"val_loss": list(val_losses)[i]}, step=i)
-            mlflow.log_metric("test_accuracy", accuracy)
+    logger.info(
+        f'Registered best model at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+    )
 
-        logger.info(
-            f'Tracked training with for iter {i} MLFlow at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-        )
+    with open(str(config.ROOT_DIR / "model_registry.yaml"), "r") as file:
+        model_registry = yaml.safe_load(file)
+
+    model_registry["mlflow"]["model"][
+        "experiment_name"
+    ] = TUNING_EXPERIMENT_NAME
+    model_registry["mlflow"]["model"]["model_name"] = PRODUCTION_MODEL_NAME
+    model_registry["mlflow"]["model"]["model_version"] = model_version._version
+
+    with open(str(config.ROOT_DIR / "iris_model_registry.yaml"), "w") as file:
+        yaml.dump(model_registry, file)
+
+    logger.info(
+        f'Saved registered model yaml file at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
+    )
 
 
 if __name__ == "__main__":
-    tune()
+    app()
