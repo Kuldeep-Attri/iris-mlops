@@ -12,7 +12,7 @@ def get_prediction(input_data):
     Returns:
         str: Predicted class label if successful, or an error message if failed.
     """
-    url = "http://127.0.0.1:3333/predict/"
+    url = "http://127.0.0.1:8000/predict/"
 
     try:
         # Send a POST request to the prediction server
