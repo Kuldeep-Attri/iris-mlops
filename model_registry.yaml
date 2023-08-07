@@ -1,0 +1,5 @@
+mlflow:
+  model:
+    experiment_name: "experiment-name"
+    model_name: "model-name"
+    model_version: 0
