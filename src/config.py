@@ -19,7 +19,7 @@ TUNING_CONFIG = {
     "learning_rates": [0.05, 0.01, 0.001],
     "layer1_dims": [64, 128, 256],
     "layer2_dims": [32, 64, 128],
-    "activation_functions": ["relu"],
+    "activation_functions": ["relu", "tanh"],
 }
 
 # Config Directories

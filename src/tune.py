@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import typer
+import yaml
 from mlflow.tracking.client import MlflowClient
 
 import config
@@ -20,7 +21,7 @@ from prepare_data import stratify_split
 from utils import mlflow_config
 
 # Constants
-TUNING_EXPERIMENT_NAME = "iris-mlops-tuning-update"
+TUNING_EXPERIMENT_NAME = "iris-mlops-tuning"
 TUNING_MODEL_NAME = "iris-tuned-model"
 PRODUCTION_MODEL_NAME = "iris-production-model"
 
@@ -28,7 +29,9 @@ PRODUCTION_MODEL_NAME = "iris-production-model"
 app = typer.Typer()
 
 
-def register_production_model(mlflow):
+def register_production_model(
+    mlflow, production_model_run_id: str
+) -> Optional[str]:
     """
     Register the best model from tuning as the production model if it outperforms the current production model.
 
@@ -50,15 +53,11 @@ def register_production_model(mlflow):
         new_model_run = runs.iloc[0]
         new_model_run_id = new_model_run.run_id
 
-        try:
-            production_model_info = mlflow.models.get_model_info(
-                f"models:/{PRODUCTION_MODEL_NAME}/Production"
-            )
-            production_model_run_id = production_model_info.run_id
+        if production_model_run_id != "ZZZ":
             production_model_performance = mlflow.get_run(
                 production_model_run_id
             ).data.metrics["val_loss"]
-            new_model_performance = new_model_run.data.metrics["val_loss"]
+            new_model_performance = new_model_run["metrics.val_loss"]
 
             if new_model_performance < production_model_performance:
                 new_model_version = mlflow.register_model(
@@ -67,23 +66,24 @@ def register_production_model(mlflow):
                 )
                 mlflow_client.transition_model_version_stage(
                     name=PRODUCTION_MODEL_NAME,
-                    version=new_model_version,
+                    version=new_model_version._version,
                     stage="Production",
                     archive_existing_versions=True,
                 )
                 logger.info(
                     "The new model outperformed the production model, so updated the production model."
                 )
+                return new_model_run_id
             else:
                 logger.info(
                     "The new model did not outperform the production model, so no updates."
                 )
-        except:
+                return
+        else:
             new_model_version = mlflow.register_model(
                 model_uri=f"runs:/{new_model_run_id}/model",
                 name=PRODUCTION_MODEL_NAME,
             )
-            print(new_model_version)
             mlflow_client.transition_model_version_stage(
                 name=PRODUCTION_MODEL_NAME,
                 version=new_model_version._version,
@@ -91,10 +91,12 @@ def register_production_model(mlflow):
                 archive_existing_versions=True,
             )
             logger.info("Registered the first production model.")
+            return new_model_run_id
     else:
         logger.error(
             "No runs found. Please ensure you have run an experiment."
         )
+        return
 
 
 def train_n_validate_model(
@@ -238,19 +240,21 @@ def tune():
         None
     """
 
-    # combinations = product(
-    #     config.TUNING_CONFIG["num_epochs"],
-    #     config.TUNING_CONFIG["learning_rates"],
-    #     config.TUNING_CONFIG["layer1_dims"],
-    #     config.TUNING_CONFIG["layer2_dims"],
-    #     config.TUNING_CONFIG["activation_functions"],
-    # )
+    with open(
+        str(config.ROOT_DIR / "iris_model_registry.yaml"), "r"
+    ) as config_file:
+        model_registry_config = yaml.safe_load(config_file)
+
+    production_model_run_id = model_registry_config["mlflow"]["production"][
+        "latest_model_run_id"
+    ]
+
     combinations = product(
-        config.TUNING_CONFIG["num_epochs"][:1],
-        config.TUNING_CONFIG["learning_rates"][:1],
-        config.TUNING_CONFIG["layer1_dims"][:1],
-        config.TUNING_CONFIG["layer2_dims"][:1],
-        config.TUNING_CONFIG["activation_functions"][:1],
+        config.TUNING_CONFIG["num_epochs"],
+        config.TUNING_CONFIG["learning_rates"],
+        config.TUNING_CONFIG["layer1_dims"],
+        config.TUNING_CONFIG["layer2_dims"],
+        config.TUNING_CONFIG["activation_functions"],
     )
 
     logger.info(
@@ -311,7 +315,19 @@ def tune():
         f'Tuned & Tracked model at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
     )
 
-    register_production_model(mlflow=mlflow)
+    new_production_model_run_id = register_production_model(
+        mlflow=mlflow, production_model_run_id=production_model_run_id
+    )
+    if new_production_model_run_id:
+        with open(
+            str(config.ROOT_DIR / "iris_model_registry.yaml"), "w"
+        ) as config_file:
+            model_registry_config["mlflow"]["production"][
+                "latest_model_run_id"
+            ] = new_production_model_run_id
+            yaml.dump(
+                model_registry_config, config_file, default_flow_style=False
+            )
 
 
 if __name__ == "__main__":
