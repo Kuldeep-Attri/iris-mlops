@@ -12,7 +12,7 @@ def get_prediction(input_data):
     Returns:
         str: Predicted class label if successful, or an error message if failed.
     """
-    url = "http://localhost:8000/predict/"
+    url = "http://127.0.0.1:3333/predict/"
 
     try:
         # Send a POST request to the prediction server
@@ -20,7 +20,7 @@ def get_prediction(input_data):
 
         if response.status_code == 200:
             prediction = response.json().get("prediction")
-            return f"Predicted class label: {prediction}"
+            return f"{prediction}"
         else:
             return "Failed to get prediction"
     except httpx.RequestError as e:
@@ -45,7 +45,12 @@ def main():
 
     if st.button("Predict"):
         prediction_result = get_prediction(input_data)
-        st.write(prediction_result)
+        mapping_ = {
+            "0": "Iris-setosa",
+            "1": "Iris-versicolor",
+            "2": "Iris-virginica",
+        }
+        st.write(f"Output is: {mapping_[prediction_result]}.")
 
 
 if __name__ == "__main__":

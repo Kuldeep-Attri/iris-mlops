@@ -1,4 +1,7 @@
+import sys
 from typing import List
+
+sys.path.append("./src")
 
 import mlflow
 import torch
@@ -18,6 +21,7 @@ try:
     PRODUCTION_MODEL = mlflow.pytorch.load_model(
         f"models:/{PRODUCTION_MODEL_NAME}/Production"
     )
+    print(PRODUCTION_MODEL)
 except:
     print(
         "Please go to mlflow ui and cretae a production model registry manually :("
