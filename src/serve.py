@@ -5,27 +5,36 @@ sys.path.append("./src")
 
 import mlflow
 import torch
+import yaml
 from fastapi import FastAPI
 
+import config
 from utils import mlflow_config
 
 app = FastAPI()
 
 mlflow = mlflow_config()
 
-PRODUCTION_MODEL_NAME = "iris-production-model"
 PRODUCTION_MODEL = None
+TUNING_MODEL_NAME = "iris-tuned-model"
+
+with open(
+    str(config.ROOT_DIR / "iris_model_registry.yaml"), "r"
+) as config_file:
+    model_registry_config = yaml.safe_load(config_file)
+
+PRODUCTION_MODEL_RUN_ID = model_registry_config["mlflow"]["production"][
+    "latest_model_run_id"
+]
 
 # Check if we have loaded a production model or not.
-try:
+if PRODUCTION_MODEL_RUN_ID != "ZZZ":
     PRODUCTION_MODEL = mlflow.pytorch.load_model(
-        f"models:/{PRODUCTION_MODEL_NAME}/Production"
+        f"runs:/{PRODUCTION_MODEL_RUN_ID}/{TUNING_MODEL_NAME}"
     )
     print(PRODUCTION_MODEL)
-except:
-    print(
-        "Please go to mlflow ui and cretae a production model registry manually :("
-    )
+else:
+    print("No model registered for production.")
 
 
 @app.get("/")
