@@ -2,6 +2,7 @@
 **/processed_data.csv
 **/new_batch_data.csv
 *mlflow.db
+**/mlruns
 
 # Remove MLFlow model registry parameters
 **iris_model_registry.yaml
