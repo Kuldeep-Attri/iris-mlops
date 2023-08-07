@@ -20,12 +20,81 @@ from prepare_data import stratify_split
 from utils import mlflow_config
 
 # Constants
-TUNING_EXPERIMENT_NAME = "iris-mlops-tuning"
+TUNING_EXPERIMENT_NAME = "iris-mlops-tuning-update"
 TUNING_MODEL_NAME = "iris-tuned-model"
 PRODUCTION_MODEL_NAME = "iris-production-model"
 
 # Initialize Typer CLI app
 app = typer.Typer()
+
+
+def register_production_model(mlflow):
+    """
+    Register the best model from tuning as the production model if it outperforms the current production model.
+
+    Parameters:
+        mlflow: MLflow client instance.
+
+    Returns:
+        None
+    """
+    mlflow_client = MlflowClient(tracking_uri=mlflow.get_tracking_uri())
+
+    runs = mlflow.search_runs(
+        experiment_names=[TUNING_EXPERIMENT_NAME],
+        order_by=["metrics.val_loss ASC"],
+        max_results=1,
+    )
+
+    if not runs.empty:
+        new_model_run = runs.iloc[0]
+        new_model_run_id = new_model_run.run_id
+
+        try:
+            production_model_info = mlflow.models.get_model_info(
+                f"models:/{PRODUCTION_MODEL_NAME}/Production"
+            )
+            production_model_run_id = production_model_info.run_id
+            production_model_performance = mlflow.get_run(
+                production_model_run_id
+            ).data.metrics["val_loss"]
+            new_model_performance = new_model_run.data.metrics["val_loss"]
+
+            if new_model_performance < production_model_performance:
+                new_model_version = mlflow.register_model(
+                    model_uri=f"runs:/{new_model_run_id}/model",
+                    name=PRODUCTION_MODEL_NAME,
+                )
+                mlflow_client.transition_model_version_stage(
+                    name=PRODUCTION_MODEL_NAME,
+                    version=new_model_version,
+                    stage="Production",
+                    archive_existing_versions=True,
+                )
+                logger.info(
+                    "The new model outperformed the production model, so updated the production model."
+                )
+            else:
+                logger.info(
+                    "The new model did not outperform the production model, so no updates."
+                )
+        except:
+            new_model_version = mlflow.register_model(
+                model_uri=f"runs:/{new_model_run_id}/model",
+                name=PRODUCTION_MODEL_NAME,
+            )
+            print(new_model_version)
+            mlflow_client.transition_model_version_stage(
+                name=PRODUCTION_MODEL_NAME,
+                version=new_model_version._version,
+                stage="Production",
+                archive_existing_versions=True,
+            )
+            logger.info("Registered the first production model.")
+    else:
+        logger.error(
+            "No runs found. Please ensure you have run an experiment."
+        )
 
 
 def train_n_validate_model(
@@ -169,12 +238,19 @@ def tune():
         None
     """
 
+    # combinations = product(
+    #     config.TUNING_CONFIG["num_epochs"],
+    #     config.TUNING_CONFIG["learning_rates"],
+    #     config.TUNING_CONFIG["layer1_dims"],
+    #     config.TUNING_CONFIG["layer2_dims"],
+    #     config.TUNING_CONFIG["activation_functions"],
+    # )
     combinations = product(
-        config.TUNING_CONFIG["num_epochs"],
-        config.TUNING_CONFIG["learning_rates"],
-        config.TUNING_CONFIG["layer1_dims"],
-        config.TUNING_CONFIG["layer2_dims"],
-        config.TUNING_CONFIG["activation_functions"],
+        config.TUNING_CONFIG["num_epochs"][:1],
+        config.TUNING_CONFIG["learning_rates"][:1],
+        config.TUNING_CONFIG["layer1_dims"][:1],
+        config.TUNING_CONFIG["layer2_dims"][:1],
+        config.TUNING_CONFIG["activation_functions"][:1],
     )
 
     logger.info(
@@ -234,6 +310,8 @@ def tune():
     logger.info(
         f'Tuned & Tracked model at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
     )
+
+    register_production_model(mlflow=mlflow)
 
 
 if __name__ == "__main__":
