@@ -1,6 +1,9 @@
+import warnings
 from datetime import datetime as dt
 from itertools import product
 from typing import Optional, Tuple
+
+warnings.simplefilter("ignore")
 
 import dvc.api
 import numpy as np
@@ -8,7 +11,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import typer
-import yaml
+from mlflow.tracking.client import MlflowClient
 
 import config
 from config import logger
@@ -23,43 +26,6 @@ PRODUCTION_MODEL_NAME = "iris-production-model"
 
 # Initialize Typer CLI app
 app = typer.Typer()
-
-
-def register_best_model(
-    mlflow,
-    experiment_name: str = TUNING_EXPERIMENT_NAME,
-    model_name: str = PRODUCTION_MODEL_NAME,
-) -> Optional[int]:
-    """
-    Register the best model to the MLflow Model Registry based on specified criteria.
-
-    Parameters:
-        mlflow: MLflow client instance.
-        experiment_name (str, optional): Name of the experiment where runs are logged.
-            Default is "iris-mlops-tuning".
-        model_name (str, optional): Name to be given to the registered model.
-            Default is "iris-production-model".
-
-    Returns:
-        int: Version of the registered model, or None if no suitable model was found.
-    """
-
-    sorted_runs = mlflow.search_runs(
-        experiment_names=[experiment_name], order_by=["metrics.val_loss ASC"]
-    )
-    if not sorted_runs.empty:
-        best_run_id = sorted_runs.iloc[0].run_id
-        model_version = mlflow.register_model(
-            f"models:/{best_run_id}/model", model_name
-        )
-        logger.info(
-            f'Registered model at MLFlow Registry at {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-        )
-
-        return model_version
-
-    logger.error(f"Could not find a model to register.")
-    return None
 
 
 def train_n_validate_model(
@@ -267,32 +233,6 @@ def tune():
 
     logger.info(
         f'Tuned & Tracked model at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-    )
-
-    model_version = register_best_model(
-        mlflow=mlflow,
-        experiment_name=TUNING_EXPERIMENT_NAME,
-        model_name=PRODUCTION_MODEL_NAME,
-    )
-
-    logger.info(
-        f'Registered best model at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-    )
-
-    with open(str(config.ROOT_DIR / "model_registry.yaml"), "r") as file:
-        model_registry = yaml.safe_load(file)
-
-    model_registry["mlflow"]["model"][
-        "experiment_name"
-    ] = TUNING_EXPERIMENT_NAME
-    model_registry["mlflow"]["model"]["model_name"] = PRODUCTION_MODEL_NAME
-    model_registry["mlflow"]["model"]["model_version"] = model_version._version
-
-    with open(str(config.ROOT_DIR / "iris_model_registry.yaml"), "w") as file:
-        yaml.dump(model_registry, file)
-
-    logger.info(
-        f'Saved registered model yaml file at: {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
     )
 
 

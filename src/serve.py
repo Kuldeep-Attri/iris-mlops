@@ -9,7 +9,19 @@ from utils import mlflow_config
 app = FastAPI()
 
 mlflow = mlflow_config()
-MODEL = mlflow.pytorch.load_model(f"models:/iris-production-model/1")
+
+PRODUCTION_MODEL_NAME = "iris-production-model"
+PRODUCTION_MODEL = None
+
+# Check if we have loaded a production model or not.
+try:
+    PRODUCTION_MODEL = mlflow.pytorch.load_model(
+        f"models:/{PRODUCTION_MODEL_NAME}/Production"
+    )
+except:
+    print(
+        "Please go to mlflow ui and cretae a production model registry manually :("
+    )
 
 
 @app.get("/")
@@ -28,8 +40,9 @@ async def predict(input_data: List[float]):
     Returns:
         dict: A dictionary containing the predicted class label.
     """
+
     sample = torch.FloatTensor([input_data])
-    output = MODEL(sample)
+    output = PRODUCTION_MODEL(sample)
     prediction = torch.argmax(output)
     prediction = prediction.item()
 

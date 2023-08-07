@@ -13,13 +13,22 @@ NUM_CLASSES = 3
 LR = 0.01
 NUM_EPOCHS = 100
 
-# Tuning Parameters
+# # Tuning Parameters
+# TUNING_CONFIG = {
+#     "num_epochs": [10, 50, 100],
+#     "learning_rates": [0.05, 0.01, 0.001],
+#     "layer1_dims": [64, 128, 256],
+#     "layer2_dims": [32, 64, 128],
+#     "activation_functions": ["relu", "tanh"],
+# }
+
+# For qucik test. Comment when dev. done
 TUNING_CONFIG = {
-    "num_epochs": [10],  # [10, 50, 100],
-    "learning_rates": [0.01],  # [0.05, 0.01, 0.001],
-    "layer1_dims": [64],  # [64, 128, 256],
-    "layer2_dims": [32],  # [32, 64, 128],
-    "activation_functions": ["relu"],  # ["relu", "tanh"],
+    "num_epochs": [10],
+    "learning_rates": [0.05],
+    "layer1_dims": [64],
+    "layer2_dims": [32],
+    "activation_functions": ["relu"],
 }
 
 # Config Directories
