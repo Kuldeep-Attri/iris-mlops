@@ -164,19 +164,12 @@ def tune():
         "latest_model_run_id"
     ]
 
-    # combinations = product(
-    #     config.TUNING_CONFIG["num_epochs"],
-    #     config.TUNING_CONFIG["learning_rates"],
-    #     config.TUNING_CONFIG["layer1_dims"],
-    #     config.TUNING_CONFIG["layer2_dims"],
-    #     config.TUNING_CONFIG["activation_functions"],
-    # )
     combinations = product(
-        config.TUNING_CONFIG["num_epochs"][:1],
-        config.TUNING_CONFIG["learning_rates"][:1],
-        config.TUNING_CONFIG["layer1_dims"][:1],
-        config.TUNING_CONFIG["layer2_dims"][:1],
-        config.TUNING_CONFIG["activation_functions"][:1],
+        config.TUNING_CONFIG["num_epochs"],
+        config.TUNING_CONFIG["learning_rates"],
+        config.TUNING_CONFIG["layer1_dims"],
+        config.TUNING_CONFIG["layer2_dims"],
+        config.TUNING_CONFIG["activation_functions"],
     )
 
     logger.info(
