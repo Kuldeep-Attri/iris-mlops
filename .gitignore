@@ -3,6 +3,9 @@
 **/new_batch_data.csv
 *mlflow.db
 
+# Remove MLFlow model registry parameters
+**iris_model_registry.yaml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
