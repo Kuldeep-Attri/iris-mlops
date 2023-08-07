@@ -18,6 +18,7 @@ import config
 from config import logger
 from models import SimpleNeuralNetwork
 from prepare_data import stratify_split
+from train import test_model, train_n_validate_model
 from utils import mlflow_config
 
 # Constants
@@ -99,92 +100,6 @@ def register_production_model(
         return
 
 
-def train_n_validate_model(
-    model: torch.nn.Module,
-    X_train: torch.FloatTensor,
-    y_train: torch.LongTensor,
-    X_val: torch.FloatTensor,
-    y_val: torch.LongTensor,
-    num_epochs: int,
-    learning_rate: float,
-) -> Tuple[torch.nn.Module, np.ndarray, np.ndarray]:
-    """
-    Train and validate a PyTorch model.
-
-    This function trains a given PyTorch model using the provided training data and validates it using the validation data.
-    It computes and returns the training and validation losses for each epoch.
-
-    Args:
-        model (torch.nn.Module): The PyTorch model to be trained and validated.
-        X_train (torch.FloatTensor): The training input data as a PyTorch tensor.
-        y_train (torch.LongTensor): The training target labels as a PyTorch tensor.
-        X_val (torch.FloatTensor): The validation input data as a PyTorch tensor.
-        y_val (torch.LongTensor): The validation target labels as a PyTorch tensor.
-        num_epochs (int): The number of training epochs.
-        learning_rate (float): The learning rate for optimization.
-
-    Returns:
-        Tuple[torch.nn.Module, np.ndarray, np.ndarray]: A tuple containing the trained model,
-        the training losses for each epoch, and the validation losses for each epoch.
-    """
-
-    train_losses = np.zeros(num_epochs)
-    val_losses = np.zeros(num_epochs)
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
-    for epoch in range(num_epochs):
-        model.train()
-        optimizer.zero_grad()
-
-        output_train = model(X_train)
-        loss_train = criterion(output_train, y_train)
-        loss_train.backward()
-        optimizer.step()
-
-        loss_train = loss_train.item()
-        train_losses[epoch] = loss_train
-
-        model.eval()
-        output_val = model(X_val)
-        loss_val = criterion(output_val, y_val)
-
-        loss_val = loss_val.item()
-        val_losses[epoch] = loss_val
-
-    return model, train_losses, val_losses
-
-
-def test_model(
-    model: nn.Module, X_test: torch.FloatTensor, y_test: torch.LongTensor
-) -> float:
-    """
-    Test a PyTorch model and calculate its accuracy.
-
-    This function evaluates a trained PyTorch model using the provided test data and calculates its accuracy.
-    The accuracy is calculated as the ratio of correctly predicted samples to the total number of test samples.
-
-    Args:
-        model (nn.Module): The trained PyTorch model to be tested.
-        X_test (torch.FloatTensor): The test input data as a PyTorch tensor.
-        y_test (torch.LongTensor): The test target labels as a PyTorch tensor.
-
-    Returns:
-        float: The accuracy of the model on the test data.
-    """
-
-    model.eval()
-
-    output_test = model(X_test)
-    _, predicted_test = torch.max(output_test, 1)
-    correct_predictions_test = (predicted_test == y_test).sum().item()
-    total_test_samples = y_test.size(0) * 1.0
-
-    accuracy = round(correct_predictions_test / total_test_samples, 4) * 100.0
-    return accuracy
-
-
 def log_tuning_with_mlflow(
     mlflow,
     i: int,
@@ -249,12 +164,19 @@ def tune():
         "latest_model_run_id"
     ]
 
+    # combinations = product(
+    #     config.TUNING_CONFIG["num_epochs"],
+    #     config.TUNING_CONFIG["learning_rates"],
+    #     config.TUNING_CONFIG["layer1_dims"],
+    #     config.TUNING_CONFIG["layer2_dims"],
+    #     config.TUNING_CONFIG["activation_functions"],
+    # )
     combinations = product(
-        config.TUNING_CONFIG["num_epochs"],
-        config.TUNING_CONFIG["learning_rates"],
-        config.TUNING_CONFIG["layer1_dims"],
-        config.TUNING_CONFIG["layer2_dims"],
-        config.TUNING_CONFIG["activation_functions"],
+        config.TUNING_CONFIG["num_epochs"][:1],
+        config.TUNING_CONFIG["learning_rates"][:1],
+        config.TUNING_CONFIG["layer1_dims"][:1],
+        config.TUNING_CONFIG["layer2_dims"][:1],
+        config.TUNING_CONFIG["activation_functions"][:1],
     )
 
     logger.info(

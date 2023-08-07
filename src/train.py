@@ -103,11 +103,8 @@ def test_model(
     _, predicted_test = torch.max(output_test, 1)
     correct_predictions_test = (predicted_test == y_test).sum().item()
     total_test_samples = y_test.size(0) * 1.0
-    accuracy = round(correct_predictions_test / total_test_samples, 4) * 100.0
 
-    logger.info(
-        f'Test Accuracy: {accuracy} % at {dt.now().strftime("%Y-%m-%d %H:%M:%S")} JST'
-    )
+    accuracy = round(correct_predictions_test / total_test_samples, 4) * 100.0
     return accuracy
 
 
