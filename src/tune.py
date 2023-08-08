@@ -1,3 +1,4 @@
+import shutil
 import warnings
 from datetime import datetime as dt
 from itertools import product
@@ -154,6 +155,12 @@ def tune():
     Returns:
         None
     """
+
+    if not str(config.ROOT_DIR / "iris_model_registry.yaml").exists():
+        shutil.copy(
+            str(config.ROOT_DIR / "model_registry.yaml"),
+            str(config.ROOT_DIR / "iris_model_registry.yaml"),
+        )
 
     with open(
         str(config.ROOT_DIR / "iris_model_registry.yaml"), "r"
